@@ -1,9 +1,9 @@
-import pandas
+import pandas as pd
 import os
-import pathlib
 import tiktoken
 from openai import OpenAI
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+import pathlib
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -13,7 +13,7 @@ openai = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
 DOMAIN = "developer.mozilla.org"
 
 
-def remove_newlines(series: pandas.Series):
+def remove_newlines(series):
     series = series.str.replace('\n', ' ')
     series = series.str.replace('\\n', ' ')
     series = series.str.replace('  ', ' ')
@@ -21,53 +21,41 @@ def remove_newlines(series: pandas.Series):
     return series
 
 
-project_root = pathlib.Path(__file__).parent.parent.resolve()
-TEXT_DIRECTORY = project_root / 'text' / DOMAIN
-PROCESSED_DIRECTORY = project_root / 'processed'
-SCRAPED_CSV_FILE_PATH = PROCESSED_DIRECTORY / 'scraped.csv'
-EMBEDDINGS_CSV_FILE_PATH = PROCESSED_DIRECTORY / 'embeddings.csv'
-
 # Create a list to store the text files
 texts = []
 
 # Get all the text files in the text directory
-for file in os.listdir(TEXT_DIRECTORY):
-
-    file_to_open = TEXT_DIRECTORY / file
-    print(file_to_open)
+for file in os.listdir("text/" + DOMAIN + "/"):
 
     # Open the file and read the text
-    with open(file_to_open, "r", encoding="UTF-8") as f:
+    with open("text/" + DOMAIN + "/" + file, "r", encoding="UTF-8") as f:
         text = f.read()
         # we replace the last 4 characters to get rid of .txt, and replace _ with / to generate the URLs we scraped
         filename = file[:-4].replace('_', '/')
-
         """
-        There are a lot of contributor.txt files that got included in the scrape, this weeds them out. There are also a lot of auth required urls that have been scraped to weed out as well
-        """
+    There are a lot of contributor.txt files that got included in the scrape, this weeds them out. There are also a lot of auth required urls that have been scraped to weed out as well
+    """
         if filename.endswith(".txt") or 'users/fxa/login' in filename:
             continue
 
         # then we replace underscores with / to get the actual links so we can cite contributions
-        texts.append(
-            (filename, text))
+        texts.append((filename, text))
 
 # Create a dataframe from the list of texts
-data_frame = pandas.DataFrame(texts, columns=['fname', 'text'])
+df = pd.DataFrame(texts, columns=['fname', 'text'])
 
 # Set the text column to be the raw text with the newlines removed
-data_frame['text'] = data_frame.fname + ". " + remove_newlines(data_frame.text)
+df['text'] = df.fname + ". " + remove_newlines(df.text)
+df.to_csv('processed/scraped.csv')
 
-data_frame.to_csv(SCRAPED_CSV_FILE_PATH)
-
+# Load the cl100k_base tokenizer which is designed to work with the ada-002 model
 tokenizer = tiktoken.get_encoding("cl100k_base")
 
-data_frame = pandas.read_csv(SCRAPED_CSV_FILE_PATH, index_col=0)
-data_frame.columns = ['title', 'text']
+df = pd.read_csv('processed/scraped.csv', index_col=0)
+df.columns = ['title', 'text']
 
 # Tokenize the text and save the number of tokens to a new column
-data_frame['n_tokens'] = data_frame.text.apply(
-    lambda x: len(tokenizer.encode(x)))
+df['n_tokens'] = df.text.apply(lambda x: len(tokenizer.encode(x)))
 
 chunk_size = 1000  # Max number of tokens
 
@@ -81,7 +69,7 @@ text_splitter = RecursiveCharacterTextSplitter(
 
 shortened = []
 
-for row in data_frame.iterrows():
+for row in df.iterrows():
 
     # If the text is None, go to the next row
     if row[1]['text'] is None:
@@ -99,12 +87,10 @@ for row in data_frame.iterrows():
     else:
         shortened.append(row[1]['text'])
 
-data_frame = pandas.DataFrame(shortened, columns=['text'])
-data_frame['n_tokens'] = data_frame.text.apply(
-    lambda x: len(tokenizer.encode(x)))
+df = pd.DataFrame(shortened, columns=['text'])
+df['n_tokens'] = df.text.apply(lambda x: len(tokenizer.encode(x)))
 
-
-data_frame['embeddings'] = data_frame.text.apply(lambda x: openai.embeddings.create(
+df['embeddings'] = df.text.apply(lambda x: openai.embeddings.create(
     input=x, model='text-embedding-ada-002').data[0].embedding)
 
-data_frame.to_csv(EMBEDDINGS_CSV_FILE_PATH)
+df.to_csv('processed/embeddings.csv')
