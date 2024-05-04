@@ -5,8 +5,8 @@ from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler
 from dotenv import load_dotenv
 from openai import OpenAI
 
-
 load_dotenv()  # take environment variables from .env.
+
 
 openai = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 tg_bot_token = os.getenv("TG_BOT_TOKEN")
@@ -16,6 +16,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     messages.append({"role": "user", "content": update.message.text})
     completion = openai.chat.completions.create(model="gpt-3.5-turbo",
                                                 messages=messages)
+
     completion_answer = completion.choices[0].message
     messages.append(completion_answer)
 
