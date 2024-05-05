@@ -1,10 +1,10 @@
-import pandas
-from openai import OpenAI
-from typing import List
-from scipy import spatial
-from dotenv import load_dotenv
-
 import os
+from typing import List
+
+import pandas
+from dotenv import load_dotenv
+from openai import OpenAI
+from scipy import spatial
 
 load_dotenv()
 
