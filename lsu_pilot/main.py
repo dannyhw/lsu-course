@@ -1,21 +1,18 @@
 import json
-import os
 import logging
-import pandas
-import numpy
+import os
 import pathlib
-from telegram import Update
-from telegram.ext import (
-    ApplicationBuilder,
-    ContextTypes,
-    CommandHandler,
-    MessageHandler,
-    filters
-)
+
+import numpy
+import pandas
 from dotenv import load_dotenv
 from openai import OpenAI
-from questions import answer_question
-from functions import functions, run_function
+from telegram import Update
+from telegram.ext import (ApplicationBuilder, CommandHandler, ContextTypes,
+                          MessageHandler, filters)
+
+from .functions import functions, run_function
+from .questions import answer_question
 
 load_dotenv()  # take environment variables from .env.
 

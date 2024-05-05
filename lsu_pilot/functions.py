@@ -1,6 +1,5 @@
 from cairosvg import svg2png
 
-
 functions = [
     {
         "type": "function",
