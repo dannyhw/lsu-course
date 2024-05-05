@@ -117,8 +117,3 @@ def answer_question(source_data_frame: pandas.DataFrame,
     except Exception as e:
         print(e)
         return ""
-
-
-# data_frame = pandas.read_csv('processed/embeddings.csv', index_col=0)
-# data_frame['embeddings'] = data_frame['embeddings'].apply(
-#     eval).apply(numpy.array)
