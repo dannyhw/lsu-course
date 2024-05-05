@@ -1,4 +1,3 @@
-import numpy
 import pandas
 from openai import OpenAI
 from typing import List
