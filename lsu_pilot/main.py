@@ -5,13 +5,14 @@ import pathlib
 
 import numpy
 import pandas
+import requests
 from dotenv import load_dotenv
 from openai import OpenAI
 from telegram import Update
 from telegram.ext import (ApplicationBuilder, CommandHandler, ContextTypes,
                           MessageHandler, filters)
 
-from .functions import functions, run_function
+from .functions import functions, run_function, text_to_image
 from .questions import answer_question
 
 load_dotenv()  # take environment variables from .env.
@@ -57,13 +58,16 @@ Make sure All HTML is generated with the JSX flavoring.
 """
 
 
-messages = [{
-    "role": "system",
-    "content": "You are a helpful assistant that answers questions."
-}, {
-    "role": "system",
-    "content": CODE_PROMPT
-}]
+messages = [
+    {
+        "role": "system",
+        "content": "You are a helpful assistant that answers questions."
+    },
+    {
+        "role": "system",
+        "content": CODE_PROMPT
+    },
+]
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -91,6 +95,8 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     tool_calls = initial_response_message.tool_calls
 
+    print(f"tool calls: {tool_calls}")
+
     if tool_calls:
         for tool_call in tool_calls:
             name = tool_call.function.name
@@ -99,7 +105,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             response = run_function(name, args)
 
-            print(tool_calls)
+            print(f"{tool_call} {response}")
 
             messages.append({
                 "tool_call_id": tool_call.id,
@@ -111,6 +117,14 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if name == 'svg_to_png_bytes':
                 await context.bot.send_photo(chat_id=update.effective_chat.id,
                                              photo=response)
+
+            if name == 'text_to_image':
+                print(f"text to image {response}")
+
+                image_response = requests.get(response)
+
+                await context.bot.send_photo(chat_id=update.effective_chat.id,
+                                             photo=image_response.content)
 
             # Generate the final response
             final_response = openai.chat.completions.create(
@@ -138,6 +152,15 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                        text=initial_response_message.content)
 
 
+async def image(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    image_url = text_to_image(image_description=update.message.text)
+
+    image_response = requests.get(image_url)
+
+    await context.bot.send_photo(chat_id=update.effective_chat.id,
+                                 photo=image_response.content)
+
+
 async def mozilla(update: Update, context: ContextTypes.DEFAULT_TYPE):
     answer = answer_question(
         source_data_frame, question=update.message.text, debug=True)
@@ -157,11 +180,13 @@ if __name__ == "__main__":
     start_handler = CommandHandler("start", start)
     chat_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), chat)
     mozilla_handler = CommandHandler('mozilla', mozilla)
+    image_handler = CommandHandler('image', image)
 
     # Add command handlers to the application.
     application.add_handler(start_handler)
     application.add_handler(chat_handler)
     application.add_handler(mozilla_handler)
+    application.add_handler(image_handler)
 
     # Start the bot and poll for new messages.
     application.run_polling()

@@ -19,6 +19,7 @@ def remove_newlines(series: pandas.Series):
     series = series.str.replace('\\n', ' ')
     series = series.str.replace('  ', ' ')
     series = series.str.replace('  ', ' ')
+
     return series
 
 
@@ -64,6 +65,7 @@ data_frame.to_csv(SCRAPED_CSV_FILE_PATH)
 tokenizer = tiktoken.get_encoding("cl100k_base")
 
 data_frame = pandas.read_csv(SCRAPED_CSV_FILE_PATH, index_col=0)
+
 data_frame.columns = ['title', 'text']
 
 # Tokenize the text and save the number of tokens to a new column
@@ -92,6 +94,7 @@ for row in data_frame.iterrows():
     if row[1]['n_tokens'] > chunk_size:
         # Split the text using LangChain's text splitter
         chunks = text_splitter.create_documents([row[1]['text']])
+
         # Append the content of each chunk to the 'shortened' list
         for chunk in chunks:
             shortened.append(chunk.page_content)
@@ -101,6 +104,7 @@ for row in data_frame.iterrows():
         shortened.append(row[1]['text'])
 
 data_frame = pandas.DataFrame(shortened, columns=['text'])
+
 data_frame['n_tokens'] = data_frame.text.apply(
     lambda x: len(tokenizer.encode(x)))
 
