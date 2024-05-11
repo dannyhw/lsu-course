@@ -1,4 +1,13 @@
+import os
+
 from cairosvg import svg2png
+from dotenv import load_dotenv
+from openai import OpenAI
+
+load_dotenv()  # take environment variables from .env.
+
+
+openai = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 functions = [
     {
@@ -35,6 +44,23 @@ functions = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "text_to_image",
+            "description": "Convert text to image",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "image_description": {
+                        "type": "string",
+                        "description": "The text description of an image that will be generated. The function returns a url to the image",
+                    },
+                },
+                "required": ["image_description"],
+            }
+        }
+    }
 ]
 
 
@@ -53,10 +79,22 @@ def python_math_execution(math_string: str):
         return 'invalid code generated'
 
 
+def text_to_image(image_description: str):
+    response = openai.images.generate(prompt=image_description,
+                                      model="dall-e-3",
+                                      n=1,
+                                      size="1024x1024")
+    image_url = response.data[0].url
+
+    return image_url
+
+
 def run_function(name: str, args: dict):
     if name == "svg_to_png_bytes":
         return svg_to_png_bytes(args["svg_string"])
     elif name == "python_math_execution":
         return python_math_execution(args["math_string"])
+    elif name == "text_to_image":
+        return text_to_image(args["image_description"])
     else:
         return None
