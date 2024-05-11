@@ -5,6 +5,7 @@ import pathlib
 
 import numpy
 import pandas
+import requests
 from dotenv import load_dotenv
 from openai import OpenAI
 from telegram import Update
@@ -138,6 +139,17 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                        text=initial_response_message.content)
 
 
+async def image(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    response = openai.images.generate(prompt=update.message.text,
+                                      model="dall-e-3",
+                                      n=1,
+                                      size="1024x1024")
+    image_url = response.data[0].url
+    image_response = requests.get(image_url)
+    await context.bot.send_photo(chat_id=update.effective_chat.id,
+                                 photo=image_response.content)
+
+
 async def mozilla(update: Update, context: ContextTypes.DEFAULT_TYPE):
     answer = answer_question(
         source_data_frame, question=update.message.text, debug=True)
@@ -157,11 +169,13 @@ if __name__ == "__main__":
     start_handler = CommandHandler("start", start)
     chat_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), chat)
     mozilla_handler = CommandHandler('mozilla', mozilla)
+    image_handler = CommandHandler('image', image)
 
     # Add command handlers to the application.
     application.add_handler(start_handler)
     application.add_handler(chat_handler)
     application.add_handler(mozilla_handler)
+    application.add_handler(image_handler)
 
     # Start the bot and poll for new messages.
     application.run_polling()
